@@ -55,6 +55,7 @@ typedef struct splitter {
 	unsigned char*	pat;
 	char**			sid_list;
 	unsigned char	pat_count;
+	unsigned char	rec_epg;
 	int pmt_retain;
 	int pmt_counter;
 	int avail_pmts[MAX_SERVICES];

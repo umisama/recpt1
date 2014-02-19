@@ -148,6 +148,7 @@ splitter* split_startup(
 	}
 	memset(sp->pids, 0, sizeof(sp->pids));
 	memset(sp->pmt_pids, 0, sizeof(sp->pmt_pids));
+	memset(sp->rec_epg, 0, sizeof(sp->rec_epg));
 
 	sp->sid_list	= NULL;
 	sp->pat			= NULL;
@@ -379,6 +380,12 @@ int split_ts(
 				d_offset += LENGTH_PACKET;
 				dbuf->size += LENGTH_PACKET;
 			}
+			/* EPGを記録するオプションが指定されている場合、これらを保存する。*/
+			else if( (splitter->rec_epg != 0) && (pid == 0x11 || pid == 0x12 || pid == 0x26 || pid == 0x27 ) ) {
+				memcpy(dptr + d_offset, sptr + s_offset, LENGTH_PACKET);
+				d_offset += LENGTH_PACKET;
+				dbuf->size += LENGTH_PACKET;
+			}
 			break;
 		} /* switch */
 
@@ -542,14 +549,7 @@ static int AnalyzePat(splitter *sp, unsigned char *buf)
 					break;
 				}
 				else if(!strcasecmp(*p, "epg")) {
-					/* epg抽出に必要なPIDのみを保存する */
-					int pids_epg[10] = {0x11, 0x12, 0x23, 0x29, 0x00};
-					for (j = 0; pids_epg[j] != 0x00; j++) {
-						*(pids+pids_epg[j]) = 1;
-						*(pmt_pids+pids_epg[j]) = 1;
-						sp->pmt_retain += 1;
-					}
-					sid_found    = TRUE;
+					sp->rec_epg = 1;
 					break;
 				}
 
