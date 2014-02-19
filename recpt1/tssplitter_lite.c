@@ -36,6 +36,7 @@ static char** AnalyzeSid(char *sid);
 static int AnalyzePmt(splitter *sp, unsigned char *buf, unsigned char mark);
 static int GetCrc32(unsigned char *data, int len);
 static int GetPid(unsigned char *data);
+static int CheckPidIsForTable(unsigned int pid);
 
 /**
  * サービスID解析
@@ -268,7 +269,7 @@ static int ReadTs(splitter *sp, ARIB_STD_B25_BUFFER *sbuf)
 static int RescanPID(splitter *splitter, unsigned char *buf)
 {
 	int result = TSS_NULL;
-	int i;
+	int i,j;
 
 	// clear
 	if (splitter->pmt_counter == splitter->pmt_retain) {
@@ -288,6 +289,10 @@ static int RescanPID(splitter *splitter, unsigned char *buf)
 	    result = TSS_SUCCESS;
 		for (i = 0; MAX_PID > i; i++) {
 		    if (splitter->pids[i] > 0) {
+				if (CheckPidIsForTable(i)) {
+					continue;
+				}
+
 			    splitter->pids[i] -= 1;
 		    }
 		}
@@ -538,11 +543,13 @@ static int AnalyzePat(splitter *sp, unsigned char *buf)
 				}
 				else if(!strcasecmp(*p, "epg")) {
 					/* epg抽出に必要なPIDのみを保存する */
+					int pids_epg[10] = {0x11, 0x12, 0x23, 0x29, 0x00};
+					for (j = 0; pids_epg[j] != 0x00; j++) {
+						*(pids+pids_epg[j]) = 1;
+						*(pmt_pids+pids_epg[j]) = 1;
+						sp->pmt_retain += 1;
+					}
 					sid_found    = TRUE;
-					*(pids+0x11) = 1;
-					*(pids+0x12) = 1;
-					*(pids+0x23) = 1;
-					*(pids+0x29) = 1;
 					break;
 				}
 
@@ -819,4 +826,20 @@ static int GetPid(
 	unsigned char* data)				// [in]		取得対象データのポインタ
 {
 	return ((data[0] & 0x1F) << 8) + data[1];
+}
+
+/**
+ * PIDがテーブルを伝送するためのものかを調べる
+ */
+static int CheckPidIsForTable(
+	unsigned int pid)					// [in]	調査対象の値
+{
+	int pids_for_table[COUNT_PIDS_FOR_TABLE] = PIDS_FOR_TABLE;
+	int i;
+	for (i = 0; COUNT_PIDS_FOR_TABLE > i; i++) {
+		if (pids_for_table[i] == pid) {
+			return true;
+		}
+	}
+	return false;
 }
